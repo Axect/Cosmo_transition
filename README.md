@@ -48,6 +48,9 @@ This will execute the `main` function in `src/main.rs`, which performs the follo
 - One loop thermal corrections
   ![one_loop_thermal_phi_c.png](one_loop_thermal_phi_c.png)
 
+- One loop thermal corrections at different temperatures
+  ![V_thermal.png](V_thermal.png)
+
 - Total potential
   ![V_tot.png](V_tot.png)
 
