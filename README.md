@@ -16,7 +16,7 @@ Cosmo Transition is a Rust project that calculates the one-loop thermal correcti
 
 2. Clone this repository:
    ```
-   git clone https://github.com/Axect/cosmo-transition
+   git clone https://github.com/Axect/cosmo_transition
    ```
 
 3. Change to the project directory:
