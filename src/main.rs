@@ -20,6 +20,8 @@ const CH: f64 = 5f64 / 6f64;
 #[allow(non_upper_case_globals)]
 const Ct: f64 = 3f64 / 2f64;
 
+const INF: f64 = 20f64;
+
 #[allow(non_snake_case)]
 fn main() {
     //let phi_c_vec = linspace(0, 500, 10000);
@@ -227,11 +229,10 @@ pub fn J_B(phi_c: f64, T: f64, boson: Boson) -> f64 {
         Boson::Z => m_Z(phi_c).powi(2) / T.powi(2),
         Boson::H => m_h(phi_c).powi(2) / T.powi(2),
     };
-    let lambda = 100f64;
     match boson {
         Boson::H => {
             let f = |t: f64| {
-                let lambda_t2 = (lambda * t).powi(2);
+                let lambda_t2 = (INF * t).powi(2);
                 let m_B_T = m_h2(phi_c) / T.powi(2);
                 let sum = m_B_T + lambda_t2;
                 if sum >= 0f64 {
@@ -241,13 +242,13 @@ pub fn J_B(phi_c: f64, T: f64, boson: Boson) -> f64 {
                     t.powi(2) * (2f64 * ((0.5f64 * sum.sqrt()).sin().abs())).ln()
                 }
             };
-            lambda.powi(3) * integrate(f, (0f64, 1f64), G7K15R(1e-3, 15))
+            INF.powi(3) * integrate(f, (0f64, 1f64), G7K15R(1e-4, 18))
         },
         _ => {
             let f = |t: f64| {
-                t.powi(2) * (1f64 - (-((lambda * t).powi(2) + m_B_T).sqrt()).exp()).ln()
+                t.powi(2) * (1f64 - (-((INF * t).powi(2) + m_B_T).sqrt()).exp()).ln()
             };
-            lambda.powi(3) * integrate(f, (0f64, 1f64), G7K15R(1e-3, 15))
+            INF.powi(3) * integrate(f, (0f64, 1f64), G7K15R(1e-4, 18))
         }
     }
 }
@@ -257,11 +258,10 @@ pub fn J_F(phi_c: f64, T: f64, fermion: Fermion) -> f64 {
     let m_F = match fermion {
         Fermion::Top => m_t(phi_c).powi(2) / T.powi(2),
     };
-    let lambda = 100f64;
     let f = |t: f64| {
-        t.powi(2) * (1f64 + (-((lambda * t).powi(2) + m_F).sqrt()).exp()).ln()
+        t.powi(2) * (1f64 + (-((INF * t).powi(2) + m_F).sqrt()).exp()).ln()
     };
-    lambda.powi(3) * integrate(f, (0f64, 1f64), G7K15R(1e-3, 15))
+    INF.powi(3) * integrate(f, (0f64, 1f64), G7K15R(1e-4, 18))
 }
 
 #[allow(non_snake_case)]
