@@ -3,7 +3,6 @@ use rayon::prelude::*;
 use indicatif::{ProgressBar, ParallelProgressIterator, ProgressIterator};
 use std::f64::consts::PI;
 
-// Higgs mass
 const MH: f64 = 125.0;
 const LAMBDAC: f64 = 0.13;
 const G: f64 = 0.65;
@@ -20,28 +19,11 @@ const CH: f64 = 5f64 / 6f64;
 #[allow(non_upper_case_globals)]
 const Ct: f64 = 3f64 / 2f64;
 
+// For integration
 const INF: f64 = 20f64;
 
 #[allow(non_snake_case)]
 fn main() {
-    //let phi_c_vec = linspace(0, 500, 10000);
-    //let V0_vec = phi_c_vec.fmap(V0);
-    //let V1loop_vec = phi_c_vec.fmap(V1loop);
-    //let V_eff_vec = V0_vec.add_v(&V1loop_vec);
-
-    //let mut plt = Plot2D::new();
-    //plt
-    //    .set_domain(phi_c_vec)
-    //    .insert_image(V0_vec)
-    //    .insert_image(V1loop_vec)
-    //    .insert_image(V_eff_vec.clone())
-    //    .set_ylim((-5e8, 2e8))
-    //    .set_style(PlotStyle::Nature)
-    //    .tight_layout()
-    //    .set_dpi(600)
-    //    .set_path("one_loop.png")
-    //    .savefig().unwrap();
-
     let T_vec = linspace(0.1, 200, 100);
 
     let result = T_vec.par_iter()
@@ -57,10 +39,6 @@ fn main() {
 
     let (((J_B_W, J_B_Z), J_B_H),J_F_Top): (((Vec<f64>, Vec<f64>), Vec<f64>), Vec<f64>) = result.into_iter().unzip();
 
-    //let V1loop_thermal_vec = T_vec.par_iter()
-    //    .map(|&T| V1loop_thermal(246f64, T))
-    //    .collect::<Vec<_>>();
-
     let mut plt = Plot2D::new();
     plt
         .set_domain(T_vec.clone())
@@ -75,16 +53,6 @@ fn main() {
         .set_dpi(600)
         .set_path("J.png")
         .savefig().unwrap();
-
-    //let mut plt = Plot2D::new();
-    //plt
-    //    .set_domain(T_vec)
-    //    .insert_image(V1loop_thermal_vec)
-    //    .set_style(PlotStyle::Nature)
-    //    .set_dpi(600)
-    //    .tight_layout()
-    //    .set_path("one_loop_thermal_T.png")
-    //    .savefig().unwrap();
 
     let phi_c_vec = linspace(0, 500, 100);
     let V0 = phi_c_vec.fmap(V0);
