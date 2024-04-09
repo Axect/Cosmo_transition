@@ -4,13 +4,14 @@ use indicatif::{ProgressBar, ParallelProgressIterator, ProgressIterator};
 use std::f64::consts::PI;
 
 const MH: f64 = 125.0;
-const RENORMSCALE: f64 = 246f64;
+const V: f64 = 246f64;
 const G: f64 = 0.65;
 const GP: f64 = 0.35;
 const YT: f64 = 1.0;
 const NW: usize = 6;
 const NZ: usize = 3;
 const NH: usize = 1;
+const NCHI: usize = 3;
 #[allow(non_upper_case_globals)]
 const Nt: usize = 12;
 const CW: f64 = 5f64 / 6f64;
@@ -18,6 +19,12 @@ const CZ: f64 = 5f64 / 6f64;
 const CH: f64 = 5f64 / 6f64;
 #[allow(non_upper_case_globals)]
 const Ct: f64 = 3f64 / 2f64;
+const C6: f64 = 1f64;
+const C8: f64 = 1f64;
+const F: f64 = 1000f64;
+const LAMBDA: f64 = -(3f64 * C6 * V * V / (2f64 * F * F)) - (3f64 * C8 * V * V * V * V / (2f64 * F * F * F * F)) + (MH * MH / (2f64 * V * V));
+const MU2: f64 = LAMBDA * V * V + 3f64 * C6 * V * V * V * V / (4f64 * F * F) + C8 * V * V * V * V
+    * V * V / (2f64 * F * F * F * F);
 
 // For integration
 const INF: f64 = 20f64;
@@ -145,6 +152,26 @@ fn main() {
         .tight_layout()
         .set_path("V_tot.png")
         .savefig().unwrap();
+
+    let phi_c = linspace(0, 500, 100);
+    let vdim8 = phi_c.par_iter()
+        .progress_with(ProgressBar::new(phi_c.len() as u64))
+        .map(|&phi| Vdim8_thermal(phi,200f64))
+        .collect::<Vec<_>>();
+
+    println!("{:?}", vdim8);
+
+    let mut plt = Plot2D::new();
+    plt
+        .set_domain(phi_c)
+        .insert_image(vdim8)
+        .set_style(PlotStyle::Nature)
+        .set_xlabel(r"$\phi$")
+        .set_ylabel(r"$V_{8}(\phi, T=200)$")
+        .set_dpi(600)
+        .tight_layout()
+        .set_path("vdim8.png")
+        .savefig().unwrap();
 }
 
 #[allow(non_snake_case)]
@@ -163,20 +190,20 @@ pub fn m_t(phi_c: f64) -> f64 {
 
 pub fn m_h(phi_c: f64) -> f64 {
     let mu2 = MH.powi(2) / 2f64;
-    let l = mu2 / RENORMSCALE.powi(2);
+    let l = mu2 / V.powi(2);
     (-mu2 + 3f64 * l * phi_c.powi(2)).abs().sqrt()
 }
 
 pub fn m_h2(phi_c: f64) -> f64 {
     let mu2 = MH.powi(2) / 2f64;
-    let l = mu2 / RENORMSCALE.powi(2);
+    let l = mu2 / V.powi(2);
     -mu2 + 3f64 * l * phi_c.powi(2)
 }
 
 #[allow(non_snake_case)]
 pub fn V0(phi_c: f64) -> f64 {
     let mu2 = MH.powi(2) / 2f64;
-    let l = mu2 / RENORMSCALE.powi(2);
+    let l = mu2 / V.powi(2);
     -0.5 * mu2 * phi_c.powi(2) + 0.25 * l * phi_c.powi(4)
 }
 
@@ -187,10 +214,10 @@ pub fn V1loop(phi_c: f64) -> f64 {
     let m_h = m_h(phi_c);
     let m_t = m_t(phi_c);
     1f64 / (64f64 * PI.powi(2)) * (
-        NW as f64 * m_W.powi(4) * ((m_W.powi(2) / RENORMSCALE.powi(2)).ln() - CW)
-        + NZ as f64 * m_Z.powi(4) * ((m_Z.powi(2) / RENORMSCALE.powi(2)).ln() - CZ)
-        + NH as f64 * m_h.powi(4) * ((m_h.powi(2) / RENORMSCALE.powi(2)).ln() - CH)
-        - Nt as f64 * m_t.powi(4) * ((m_t.powi(2) / RENORMSCALE.powi(2)).ln() - Ct)
+        NW as f64 * m_W.powi(4) * ((m_W.powi(2) / V.powi(2)).ln() - CW)
+        + NZ as f64 * m_Z.powi(4) * ((m_Z.powi(2) / V.powi(2)).ln() - CZ)
+        + NH as f64 * m_h.powi(4) * ((m_h.powi(2) / V.powi(2)).ln() - CH)
+        - Nt as f64 * m_t.powi(4) * ((m_t.powi(2) / V.powi(2)).ln() - Ct)
     )
 }
 
@@ -236,12 +263,43 @@ pub fn J_B(phi_c: f64, T: f64, boson: Boson) -> f64 {
 }
 
 #[allow(non_snake_case)]
+pub fn J_B_general(x: f64, can_negative: bool) -> f64 {
+    // x = m^2 / T^2
+    let f = |t: f64| {
+        t.powi(2) * (1f64 - (-(t.powi(2) + x).sqrt()).exp()).ln()
+    };
+    if !can_negative {
+        integrate(f, (0f64, INF), QUADGK)
+    } else {
+        let g = |t: f64| {
+            t.powi(2) * (2f64 * (0.5 * (x.abs() - t.powi(2)).sqrt()).sin().abs()).ln()
+        };
+        if x.abs().sqrt() < INF {
+            integrate(f, (x.abs().sqrt(), INF), QUADGK)
+            + integrate(g, (0f64, x.abs().sqrt()), QUADGK)
+        } else {
+            integrate(f, (0f64, INF), QUADGK)
+        }
+
+    }
+}
+
+#[allow(non_snake_case)]
 pub fn J_F(phi_c: f64, T: f64, fermion: Fermion) -> f64 {
     let m_F = match fermion {
         Fermion::Top => m_t(phi_c).powi(2) / T.powi(2),
     };
     let f = |t: f64| {
         t.powi(2) * (1f64 + (-(t.powi(2) + m_F).sqrt()).exp()).ln()
+    };
+    integrate(f, (0f64, INF), QUADGK)
+}
+
+#[allow(non_snake_case)]
+pub fn J_F_general(x: f64) -> f64 {
+    // x = m^2 / T^2
+    let f = |t: f64| {
+        t.powi(2) * (1f64 + (-(t.powi(2) + x).sqrt()).exp()).ln()
     };
     integrate(f, (0f64, INF), QUADGK)
 }
@@ -254,4 +312,33 @@ pub fn V1loop_thermal(phi_c: f64, T: f64) -> f64 {
     let J_H = J_B(phi_c, T, Boson::H);
     let J_Top = J_F(phi_c, T, Fermion::Top);
     T.powi(4) / (2f64 * PI.powi(2)) * (NW as f64 * J_W + NZ as f64 * J_Z + NH as f64 * J_H - Nt as f64 * J_Top)
+}
+
+fn m_squared(phi: f64) -> (f64, f64, f64, f64, f64) {
+    let mh2 = -MU2 + 3.0 * LAMBDA * phi.powi(2) + (15.0 * C6) / (4.0 * F.powi(2)) * phi.powi(4) + (7.0 * C8) / (2.0 * F.powi(4)) * phi.powi(6);
+    let mchi2 = -MU2 + LAMBDA * phi.powi(2) + (3.0 * C6) / (4.0 * F.powi(2)) * phi.powi(4) + (C8) / (2.0 * F.powi(4)) * phi.powi(6);
+    let mw2 = (G.powi(2)) / 4.0 * phi.powi(2);
+    let mz2 = ((G.powi(2) + GP.powi(2)) / 4.0) * phi.powi(2);
+    let mt2 = (YT.powi(2)) / 2.0 * phi.powi(2);
+    (mh2, mchi2, mw2, mz2, mt2)
+}
+
+
+#[allow(non_snake_case)]
+pub fn Vdim8_thermal(phi: f64, T: f64) -> f64 {
+    let (mh2, mchi2, mw2, mz2, mt2) = m_squared(phi);
+    let yw = mw2 / T.powi(2);
+    let yz = mz2 / T.powi(2);
+    let yt = mt2 / T.powi(2);
+    let yh = mh2 / T.powi(2);
+    let ychi = mchi2 / T.powi(2);
+
+    let nw = NW as f64;
+    let nz = NZ as f64;
+    let nh = NH as f64;
+    let nchi = NCHI as f64;
+    let nt = Nt as f64;
+
+    let j = nw * J_B_general(yw, false) + nz * J_B_general(yz, false) + nh * J_B_general(yh, true) + nchi * J_B_general(ychi, true) - nt * J_F_general(yt);
+    T.powi(4) / (2f64 * PI.powi(2)) * j
 }
